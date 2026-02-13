@@ -494,7 +494,7 @@ predictions |>
 ## Now and next time:
 
 1. Make sure you have `brms` and `tidybayes` packages installed.
-2. Run the script at github.
+2. Clone or download the github repository at <https://github.com/nzilbb/ws-bayes-1>.
 3. Next time: 
     - interpreting Bayesian models in more detail, esp:
     - plotting coefficients and predictions.
