@@ -1,0 +1,514 @@
+---
+title: "Bayesian Data Analysis"
+subtitle: "Orientation"
+# For author options see : 
+# https://quarto.org/docs/authoring/front-matter.html#authors-and-affiliations
+# NB: multiple authors can be added here.
+author:
+  - name:
+      given: Joshua
+      family: Wilson Black
+    email: joshua.black@canterbury.ac.nz
+    orcid: 0000-0002-8272-5763
+    affiliation: 
+      - "Te Kāhui Roro Reo | New Zealand Institute of Language, Brain and Behaviour"
+      - "Te Whare Wānanga o Waitaha | University of Canterbury"
+format:
+  revealjs:
+    theme: [custom.scss]
+    incremental: true
+    logo: images/NZILBB-small.svg
+    template-partials:
+      - title-slide.html
+    title-slide-attributes:
+      # If you have Marsden funding, change image name to `nzilbb-uc-marsden.svg`
+      data-background-image: images/nzilbb-uc.svg
+      # First number controls the horizontal position, second controls vertical.
+      data-background-position: '50% 5%'
+      # Controls size of image relative to width of the slide.
+      data-background-size: 70%
+    embed-resources: false
+    include-in-header:
+      - text: |
+          <link rel="icon" type="image/png" sizes="32x32" href=".//images/fav.png" />
+bibliography: 
+  - grateful-refs.bib
+editor: 
+  markdown: 
+    wrap: 72
+execute: 
+  echo: true
+knitr:
+  opts_chunk: 
+    dev: "png"
+    dev.args: 
+      bg: "transparent"
+---
+
+```{r}
+#| echo: false
+# This is a place to load packages in the background (i.e., this block won't 
+# apear on the slides because `echo` is false.)
+library(tidyverse)
+library(here)
+
+library(brms)
+
+theme_set(
+  theme_bw(base_size=20) +
+    theme(
+      panel.background = element_rect(fill = "transparent", colour = NA),
+      plot.background = element_rect(fill = "transparent", colour = NA)
+    )
+)
+```
+
+# Overview
+
+## Overview
+
+- Plan for these sessions
+- Fit a Bayesian model
+- What's the big deal?
+    - _i.e., what has changed from non-Bayesian models_
+    - A _teeny_ bit about interpretations of probability.
+
+# The plan
+
+## Bayes sessions
+
+::: columns
+
+:::: {.column width="50%"}
+- Four intro sessions:
+  1. Orientation
+  2. What does my model say? 
+  3. What does my model assume? 
+  4. Is my model healthy?
+::::
+
+:::: {.column width="50%"}
+- Josh away: 16/03, 23/03.
+- Mid-semester break
+- Six sessions on specific model structuress.
+    - Regression
+    - Multi-level regression
+    - Likert-scale data
+::::
+
+:::
+
+::: fragment
+
+_&c. &c. Based on your interest_.
+
+:::
+
+
+# Fit a Bayesian Model
+
+```{r}
+#| include: false
+qb2 <- read_rds(here('data', 'session_1.rds'))
+trap_plot <- qb2 |> 
+  group_by(school) |> 
+  mutate(
+    student_n = length(unique(part_id))
+  ) |> 
+  filter(student_n >= 3) |> 
+  ungroup() |> 
+  group_by(part_id) |> 
+  summarise(
+    F1_lob2 = mean(F1_lob2, na.rm=T),
+    school = first(school)
+  ) |> 
+  ggplot(
+    aes(
+      y = F1_lob2,
+      x = reorder(school, F1_lob2)
+    )
+  ) +
+  geom_boxplot() +
+  theme(
+    axis.text.x = element_text(size=8, angle = 45, hjust = 1)
+  ) +
+  labs(
+    y = "TRAP F1 (Lobanov)",
+    x = "High school"
+  )
+ggsave(
+  here('plots', 'trap_schools.png'), 
+  plot=trap_plot, 
+  units="cm", width=16, height=9,
+  bg = "transparent"
+)
+```
+
+## Data {background-image="plots/trap_schools.png" background-size="contain"}
+
+::: {.r-stack}
+
+:::: {.fragment .backlight .centre .fade-in-then-out .r-fit-text}
+
+"What school did you go to?"
+
+::::
+
+
+:::
+
+## Wrangling
+
+```{r}
+#| code-line-numbers: "|2-7"
+trap_sub <- qb2 |> 
+  filter(
+    school %in% c(
+      "Avonside Girls' High School", 
+      "St Margaret's College"
+    )
+  ) |> 
+  select(
+    age, school, F1_lob2, part_id
+  )
+```
+
+## A model {auto-animate=true}
+
+```{r}
+#| cache: true
+trap_fit <- lm(
+  F1_lob2 ~ school,  
+  data = trap_sub
+)
+```
+
+- This is a very simple 'analysis of variance' model
+- We want to see if `school` (i.e. Avonside vs. St Margarets) makes a difference to [trap]{.smallcaps} 
+realisation
+    - ...without thinking about confounding from other factors 😱
+- How do we 'make it Bayesian'?
+
+## A Bayesian model {auto-animate=true}
+
+```{r}
+#| cache: true
+#| output: false
+library(brms)
+trap_fit_b <- brm(
+  F1_lob2 ~ school,  
+  data = trap_sub
+)
+```
+
+::: {.fragment .big}
+
+🎊 Congratulations, you're a Bayesian! 🎊
+
+:::
+
+- `brms` makes Bayesian methods _incredibly accessible_.
+- For many models just putting in `brm()` instead of `lm()` (`lmer()`, etc...), 
+will work.
+
+##
+
+::: {.fragment .big}
+`lmer()` → `brm()`
+:::
+
+::: {.fragment .big}
+'Wow! Now my model converges!' 
+
+:::
+
+::: {.fragment .big}
+
+🐉🐉🐉 
+
+:::
+
+::: {.fragment .big}
+
+_kia tūpato..._
+
+:::
+
+
+# What's the big deal?
+
+## Model interpretation {.smaller auto-animate=true}
+
+::: columns
+
+:::: {.column width="80%"}
+
+::::: fragment
+
+```{r}
+#| output-location: fragment
+summary(trap_fit)
+```
+
+:::::
+
+::::
+
+
+:::: {.column width="20%"}
+
+- Point estimates of coefficients
+- Standard error
+- Statistical significance tests
+
+::::
+
+:::
+
+## Model interpretation (cont.) {.smaller auto-animate=true}
+
+::: columns
+
+:::: {.column width="80%"}
+
+::::: fragment
+
+```{r}
+#| output-location: fragment
+summary(trap_fit_b)
+```
+
+:::::
+
+::::
+
+
+:::: {.column width="20%"}
+
+- 'Draws'?
+- Coefficients
+- Error and intervals
+- 'Rhat', 'Bulk ESS'??
+- No statistical significance tests
+
+::::
+
+:::
+
+## Difference: no point estimates {.smaller}
+
+- Bayesian model gives _distributions_ for all parameters.
+
+::: {.columns}
+
+:::: {.column width="70%"}
+
+::::: fragment
+
+```{r}
+#| echo: false
+# NB: We'll talk about tidybayes and plotting more in session 2.
+library(tidybayes)
+trap_fit_b |> 
+  spread_draws(b_Intercept) |> 
+  rename(
+    Avonside = b_Intercept
+  ) |> 
+  ggplot(
+    aes(
+      x = Avonside
+    )
+  ) +
+  geom_density(alpha=0.4, colour="darkgreen", fill="darkgreen") +
+  labs(
+    x = "Avonside coefficient (intercept)"
+  )
+```
+
+:::::
+
+::::
+
+:::: {.column width="30%"}
+
+[No privileged:]{.fragment}
+
+- summary
+- error intervals
+
+[_`summary()` gives a mean with 95% interval._]{.fragment}
+
+::::
+
+:::
+
+- Predictions from the model take into account uncertainty about coefficient.
+
+## Difference: Bayesian CIs
+
+- Both Bayesian and non-Bayesian models produce 'CIs', but use different 
+words for the 'C':
+    - '[Confidence]{.red} intervals' vs.
+    - Bayesian '[credible]{.red} intervals' [(sometimes 'compatible intervals')]{.fragment}
+- Interpretation: according to our data and model, there is a 95% change the
+parameter is in the interval.
+- There's nothing special about 95%, we can use any other number we like
+(often more than one).
+
+## 
+
+::: fragment
+
+```{r}
+#| echo: false
+# NB: We'll talk about tidybayes and plotting more in session 2.
+library(tidybayes)
+trap_fit_b |> 
+  spread_draws(b_Intercept) |> 
+  rename(
+    Avonside = b_Intercept
+  ) |> 
+  ggplot(
+    aes(
+      x = Avonside
+    )
+  ) +
+  geom_halfeyeh(
+    slab_alpha = 0.6,
+    fill = "darkgreen",
+    .width = c(0.5, 0.7, 0.9),
+    point_interval = "mean_qi",
+    interval_size_range = c(2, 4)
+  ) +
+  labs(
+    x = "Avonside coefficient (intercept)"
+  )
+```
+
+:::
+
+- This 'half-eye' plot shows 50%, 70% and 90% intervals around the mean.
+- More on making these plots next time!
+
+## Flexible estimates
+
+- Let's predict [trap]{.smallcaps} realisation for these schools.
+- Under the hood: 
+    1. generate an Avonside value from the distribution, then 
+    2. generate a St Margaret's value and add to the Avonside value.
+- Repeat lots of times to get a distribution.
+- This is easy, but the models can get much more complicated!
+
+## [trap]{.smallcaps} realisations
+
+```{r}
+#| echo: false
+predictions <- tibble(
+    school = unique(trap_sub$school)
+  ) |> 
+  add_epred_draws(trap_fit_b) 
+  
+predictions |> 
+  ggplot(
+    aes(
+      colour = school,
+      fill = school,
+      x = .epred
+    )
+  ) +
+  geom_density(alpha = 0.4)
+```
+
+## _Difference_ in [trap]{.smallcaps} {.smaller}
+
+```{r}
+#| echo: false
+predictions |> 
+  pivot_wider(
+    names_from = school,
+    values_from = .epred,
+    id_cols = .draw
+  ) |> 
+  mutate(
+    Difference = `St Margaret's College` -  `Avonside Girls' High School`
+  ) |> 
+  ggplot(
+    aes(
+      x = Difference
+    )
+  ) +
+  geom_density(alpha = 0.4, fill = "grey") +
+  geom_vline(xintercept = 0, linetype="dashed")
+```
+
+- Our model and data are not compatible with saying there is no difference.
+- In this case, this is pretty much identical to the distribution of the
+'St Margarets' coefficient in our simple model.
+- But models can get more complicated!
+
+## Background: probability
+
+- The alternative to Bayesianism is 'frequentism'.
+- Core difference: how they use [probability]{.red}
+- Frequentists: probability quantifies the reliability of the method.
+- Bayesians: probability quantifies uncertainty.
+- _Both are well motivated ideas!_
+
+## Background: probability (cont.) {.smaller}
+
+- Frequentist probability is connected to proportions of samples, e.g.:
+    - 'If this analysis were repeated over and over again, we would draw the wrong
+    conclusion 5% of the time.'
+    - 'If you sampled NZE speakers born in 1937, 10% of would regularly use
+    "kia ora" as a greeting.'
+- Bayesian's use probability for uncertainty:
+    - 'Given the data and model, we are 90% sure that the effect of this 
+    variable is greater than zero' 
+    - 'The probability that language X and language Y are in the same family is
+    65%' [_(...what would you sample?)_]{.fragment}
+- It's very hard to understand the Bayesian examples in terms of sampling. 
+    - _'If universes were as plenty as blackberries...'_ (CS Peirce)
+
+## Confidence vs. credible (again) {.smaller}
+
+- Standard 95% confidence intervals: [i.e. 'frequentist']{.fragment}
+    - If we repeat _this method_, the parameter we're estimating will be inside
+    the confidence interval 95% of the time.
+    - We're 'sampling' applications of the _method_.
+    - It's not a claim about _this exact confidence interval_!
+- Bayesian 95% credible intervals:
+    - **Given the data and model,** we reckon, with 95% confidence, that the parameter
+    is somewhere in here!
+    - It's a claim about _this exact interval_.
+  - Easier to interpret, but we've changed the topic.
+
+## NB
+
+- Bayesianism is not 'Statistics 2.0'
+- There's nothing especially subjective about Bayesianism.
+    - Bayesian methods _use probability_ to express some subjective elements.
+    - Frequentists often put subjective elements into model assumptions etc.
+- You don't have to be Bayesian
+    - ...but you should understand it enough to read and review articles.
+
+## Now and next time:
+
+1. Make sure you have `brms` and `tidybayes` packages installed.
+2. Run the script at github.
+3. Next time: 
+    - interpreting Bayesian models in more detail, esp:
+    - plotting coefficients and predictions.
+
+# References
+
+```{r}
+#| echo: false
+grateful::nocite_references(
+  grateful::cite_packages(output = "citekeys", out.dir = here())
+)
+```
+
+
+::: refs
+
+:::
