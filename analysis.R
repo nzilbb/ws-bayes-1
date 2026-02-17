@@ -3,6 +3,8 @@ library(here)
 library(brms)
 library(tidybayes)
 
+qb2 <- read_rds(here('data', 'session_1.rds'))
+
 # Plot TRAP realisation by school
 qb2 |> 
   # Count how many individuals went to each school
